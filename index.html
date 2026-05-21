@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hotfix Agent - Release Engineering</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #fafaf9;
+      --sidebar: #f4f3f1;
+      --panel: #ffffff;
+      --ink: #1a1816;
+      --muted: #7a756d;
+      --line: #e5e2dd;
+      --soft-line: #ecebe7;
+      --accent: #d97757;
+      --green: #1f7a4f;
+      --amber: #a86a14;
+      --red: #b4493f;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+    }
+
+    .sidebar {
+      background: var(--sidebar);
+      border-right: 1px solid var(--line);
+      padding: 24px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 52px;
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: var(--ink);
+      color: var(--bg);
+      display: grid;
+      place-items: center;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 22px;
+      font-weight: 700;
+      position: relative;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      width: 13px;
+      height: 13px;
+      right: -7px;
+      bottom: -4px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 3px solid var(--sidebar);
+    }
+
+    .brand-text strong {
+      display: block;
+      font-size: 15px;
+    }
+
+    .brand-text span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 11px 12px;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .nav a.active {
+      background: var(--ink);
+      color: var(--bg);
+    }
+
+    .sidebar-footer {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      bottom: 24px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .main {
+      min-width: 0;
+    }
+
+    .topbar {
+      height: 80px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      background: rgba(250, 250, 249, 0.92);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(10px);
+    }
+
+    .search {
+      width: min(360px, 45vw);
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 999px;
+      padding: 9px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .status-dot.error-dot {
+      background: var(--red);
+    }
+
+    .content {
+      padding: 38px 40px 44px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 34px;
+    }
+
+    h1, h2, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 30px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .lede {
+      color: var(--muted);
+      margin-top: 10px;
+      max-width: 620px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      min-width: 230px;
+      text-align: right;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--ink);
+      color: var(--bg);
+      padding: 12px 16px;
+      font-weight: 750;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(26, 24, 22, 0.12);
+    }
+
+    button:hover {
+      background: #2c2925;
+    }
+
+    .result {
+      margin-top: 10px;
+      color: var(--green);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 36px;
+    }
+
+    .card, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 0 rgba(26, 24, 22, 0.02);
+    }
+
+    .stat-card {
+      min-height: 120px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .stat-value {
+      margin-top: 18px;
+      font-size: 34px;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .stat-note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .sparkline {
+      position: absolute;
+      right: 18px;
+      bottom: 16px;
+      width: 90px;
+      height: 38px;
+    }
+
+    .two-column {
+      grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+      margin-bottom: 22px;
+    }
+
+    .panel {
+      padding: 20px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .panel h2 {
+      font-size: 18px;
+    }
+
+    .panel-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 0;
+      min-height: 84px;
+      border: 1px solid var(--soft-line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .step {
+      position: relative;
+      padding: 18px 16px 16px;
+      border-right: 1px solid var(--soft-line);
+    }
+
+    .step:last-child {
+      border-right: 0;
+    }
+
+    .step-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .step-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .step.done .step-dot {
+      background: var(--green);
+    }
+
+    .step.running .step-dot {
+      background: var(--amber);
+    }
+
+    .step.waiting .step-dot {
+      background: #fff;
+      border: 2px solid #d4cfc6;
+      color: var(--muted);
+    }
+
+    .step-name {
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .step-time {
+      margin-top: 8px;
+    }
+
+    .activity-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .activity-list li {
+      display: grid;
+      grid-template-columns: 10px 1fr;
+      gap: 12px;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--soft-line);
+    }
+
+    .activity-list li:last-child {
+      border-bottom: 0;
+    }
+
+    .activity-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: 6px;
+    }
+
+    .table-panel {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .table-panel .panel-head {
+      padding: 20px 20px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 16px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--soft-line);
+      vertical-align: middle;
+      font-size: 14px;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      background: #fcfcfb;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .id {
+      color: var(--accent);
+      font-weight: 850;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+
+    .branch {
+      color: var(--muted);
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+
+    .done, .completed, .low {
+      background: #e3f1e9;
+      color: var(--green);
+      border: 1px solid #7fbf9b;
+    }
+
+    .running, .medium {
+      background: #faf0dc;
+      color: var(--amber);
+      border: 1px solid #e0b870;
+    }
+
+    .waiting, .waiting_approval, .high {
+      background: #f8e6e2;
+      color: var(--red);
+      border: 1px solid #dda29b;
+    }
+
+    .logs-panel {
+      margin-top: 22px;
+    }
+
+    pre {
+      margin: 0;
+      min-height: 150px;
+      padding: 16px;
+      color: #3b3a36;
+      background: #fbfaf8;
+      border: 1px solid var(--soft-line);
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .error {
+      color: var(--red);
+    }
+
+    @media (max-width: 980px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .sidebar-footer {
+        position: static;
+        margin-top: 24px;
+      }
+
+      .nav {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .topbar {
+        padding: 0 24px;
+      }
+
+      .content {
+        padding: 28px 24px;
+      }
+
+      .hero {
+        flex-direction: column;
+      }
+
+      .actions {
+        text-align: left;
+      }
+
+      .stats, .two-column {
+        grid-template-columns: 1fr;
+      }
+
+      .pipeline {
+        grid-template-columns: 1fr;
+      }
+
+      .step {
+        border-right: 0;
+        border-bottom: 1px solid var(--soft-line);
+      }
+
+      .step:last-child {
+        border-bottom: 0;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .topbar {
+        height: auto;
+        padding: 14px 18px;
+        align-items: stretch;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .search {
+        width: 100%;
+      }
+
+      .nav {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .content {
+        padding: 24px 18px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">H</div>
+        <div class="brand-text">
+          <strong>Hotfix Agent</strong>
+          <span>Release Engineering</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="active" href="#dashboard">Dashboard</a>
+        <a href="#pipeline">Pipeline</a>
+        <a href="#hotfixes-panel">Hotfixes</a>
+        <a href="#logs-panel">Logs</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        Environment<br>
+        Production release lane<br>
+        API: 127.0.0.1:8000
+      </div>
+    </aside>
+
+    <main class="main" id="dashboard">
+      <div class="topbar">
+        <div class="search">Search hotfixes, branches, approvals</div>
+        <div class="status-pill"><span class="status-dot"></span> API connected</div>
+      </div>
+
+      <div class="content">
+        <section class="hero">
+          <div>
+            <h1>Hotfix Dashboard</h1>
+            <p class="lede">Track release fixes, validation status, deployment flow, and recent activity from the FastAPI mock data source.</p>
+          </div>
+          <div class="actions">
+            <button id="createHotfixBtn">Create Hotfix</button>
+            <div id="createResult" class="result"></div>
+          </div>
+        </section>
+
+        <section id="stats" class="grid stats"></section>
+
+        <section class="grid two-column">
+          <div class="panel" id="pipeline">
+            <div class="panel-head">
+              <div>
+                <h2>Pipeline Status</h2>
+                <div class="muted">Current release path</div>
+              </div>
+              <div class="panel-label">Live</div>
+            </div>
+            <div id="pipelineSteps" class="pipeline"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Recent Activity</h2>
+                <div class="muted">Latest agent events</div>
+              </div>
+            </div>
+            <ul id="activity" class="activity-list"></ul>
+          </div>
+        </section>
+
+        <section class="panel table-panel" id="hotfixes-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Hotfixes</h2>
+              <div class="muted">Active and recently processed fixes</div>
+            </div>
+            <div class="panel-label">Queue</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Issue</th>
+                  <th>Branch</th>
+                  <th>Base</th>
+                  <th>Status</th>
+                  <th>Risk</th>
+                  <th>Owner</th>
+                  <th>Updated</th>
+                </tr>
+              </thead>
+              <tbody id="hotfixes"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel logs-panel" id="logs-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Logs</h2>
+              <div class="muted">Agent execution output</div>
+            </div>
+          </div>
+          <pre id="logs">Loading logs...</pre>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000';
+
+    function safeText(value) {
+      return String(value ?? '');
+    }
+
+    function badge(value) {
+      const className = safeText(value);
+      const text = className.replaceAll('_', ' ');
+      return `<span class="badge ${className}">${text}</span>`;
+    }
+
+    async function fetchJson(path, options) {
+      const response = await fetch(`${API_BASE}${path}`, options);
+      if (!response.ok) {
+        throw new Error(`${path} failed with ${response.status}`);
+      }
+      return response.json();
+    }
+
+    function renderStats(stats) {
+      const config = [
+        ['activeHotfixes', 'Active Hotfixes', 'Open fixes in release lanes'],
+        ['runningDeployments', 'Running Deployments', 'Deployments in progress'],
+        ['completedToday', 'Completed Today', 'Finished in this cycle'],
+        ['successRate', 'Success Rate', 'Validation pass rate']
+      ];
+
+      document.getElementById('stats').innerHTML = config.map(([key, label, note], index) => `
+        <div class="card stat-card">
+          <div class="stat-label">${label}</div>
+          <div class="stat-value">${safeText(stats[key])}</div>
+          <div class="stat-note">${note}</div>
+          ${index === 0 ? `
+            <svg class="sparkline" viewBox="0 0 90 38" aria-hidden="true">
+              <path d="M2 31 L20 19 L38 24 L57 8 L88 15" fill="none" stroke="#d97757" stroke-width="3" stroke-linecap="round"></path>
+            </svg>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    function renderPipeline(pipeline) {
+      document.getElementById('pipelineSteps').innerHTML = pipeline.map(item => {
+        const status = safeText(item.status);
+        const mark = status === 'done' ? 'OK' : status === 'running' ? 'RUN' : '...';
+        return `
+          <div class="step ${status}">
+            <div class="step-top">
+              <div class="step-dot">${mark}</div>
+              <div class="step-name">${safeText(item.step)}</div>
+            </div>
+            ${badge(status)}
+            <div class="muted step-time">${safeText(item.time)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderActivity(items) {
+      document.getElementById('activity').innerHTML = items.map(item => `
+        <li>
+          <span class="activity-dot"></span>
+          <span>
+            <strong>${safeText(item.action)}</strong>
+            <div class="muted">${safeText(item.target)} - ${safeText(item.time)}</div>
+          </span>
+        </li>
+      `).join('');
+    }
+
+    function renderHotfixes(hotfixes) {
+      document.getElementById('hotfixes').innerHTML = hotfixes.map(item => `
+        <tr>
+          <td><span class="id">${safeText(item.id)}</span></td>
+          <td>
+            <strong>${safeText(item.title)}</strong>
+            <div class="muted">${safeText(item.commits)} commits</div>
+          </td>
+          <td><span class="branch">${safeText(item.branch)}</span></td>
+          <td>${safeText(item.base)}</td>
+          <td>${badge(item.status)}</td>
+          <td>${badge(item.risk)}</td>
+          <td>${safeText(item.assignee)}</td>
+          <td>${safeText(item.updated)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderLogs(logs) {
+      document.getElementById('logs').textContent = logs.map((line, index) => {
+        return `[${String(index + 1).padStart(2, '0')}] ${line}`;
+      }).join('\n');
+    }
+
+    async function loadDashboard() {
+      try {
+        const [dashboard, hotfixes, logs] = await Promise.all([
+          fetchJson('/dashboard'),
+          fetchJson('/hotfixes'),
+          fetchJson('/logs')
+        ]);
+
+        renderStats(dashboard.stats);
+        renderPipeline(dashboard.pipeline);
+        renderActivity(dashboard.recentActivity);
+        renderHotfixes(hotfixes.hotfixes);
+        renderLogs(logs.logs);
+      } catch (error) {
+        const statusPill = document.querySelector('.status-pill');
+        statusPill.innerHTML = '<span class="status-dot error-dot"></span> API unavailable';
+        document.getElementById('logs').innerHTML = `<span class="error">${error.message}</span>`;
+      }
+    }
+
+    document.getElementById('createHotfixBtn').addEventListener('click', async () => {
+      const result = document.getElementById('createResult');
+      result.classList.remove('error');
+      result.textContent = 'Creating hotfix...';
+
+      try {
+        const data = await fetchJson('/hotfix/create', { method: 'POST' });
+        result.textContent = `Created ${data.job_id} on ${data.branch}`;
+      } catch (error) {
+        result.textContent = error.message;
+        result.classList.add('error');
+      }
+    });
+
+    loadDashboard();
+  </script>
+
+  <!--
+  Execution steps:
+
+  pip install -r requirements.txt
+
+  Run backend:
+  uvicorn app:app --reload
+
+  Open frontend:
+  Open index.html directly in browser
+  -->
+</body>
+</html>

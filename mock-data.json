@@ -1,0 +1,97 @@
+{
+  "stats": {
+    "activeHotfixes": 7,
+    "runningDeployments": 3,
+    "completedToday": 4,
+    "successRate": "97.2%"
+  },
+
+  "pipeline": [
+    {
+      "step": "Build",
+      "status": "done",
+      "time": "2 min ago"
+    },
+    {
+      "step": "Validation",
+      "status": "done",
+      "time": "1 min ago"
+    },
+    {
+      "step": "Packaging",
+      "status": "running",
+      "time": "now"
+    },
+    {
+      "step": "Approval",
+      "status": "waiting",
+      "time": "pending"
+    }
+  ],
+
+  "hotfixes": [
+    {
+      "id": "CHF-401",
+      "title": "Payment retry issue",
+      "branch": "hotfix/CHF-401",
+      "base": "release/2026.05",
+      "status": "running",
+      "risk": "high",
+      "assignee": "Rahul Sharma",
+      "updated": "2m ago",
+      "commits": 3
+    },
+
+    {
+      "id": "CHF-398",
+      "title": "Session timeout mismatch",
+      "branch": "hotfix/CHF-398",
+      "base": "release/2026.05",
+      "status": "waiting_approval",
+      "risk": "medium",
+      "assignee": "Priya Verma",
+      "updated": "5m ago",
+      "commits": 2
+    },
+
+    {
+      "id": "CHF-392",
+      "title": "Webhook sync failure",
+      "branch": "hotfix/CHF-392",
+      "base": "release/2026.04",
+      "status": "completed",
+      "risk": "low",
+      "assignee": "Ankit Joshi",
+      "updated": "18m ago",
+      "commits": 1
+    }
+  ],
+
+  "recentActivity": [
+    {
+      "action": "Cherry-pick started",
+      "target": "CHF-401",
+      "time": "now"
+    },
+
+    {
+      "action": "Validation completed",
+      "target": "CHF-398",
+      "time": "3m ago"
+    },
+
+    {
+      "action": "Deployment queued",
+      "target": "CHF-392",
+      "time": "10m ago"
+    }
+  ],
+
+  "logs": [
+    "Creating release branch...",
+    "Cherry-picking commits...",
+    "Running validation suite...",
+    "Waiting for approval...",
+    "Deployment initiated..."
+  ]
+}
