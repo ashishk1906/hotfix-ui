@@ -1,7 +1,5 @@
 # Hotfix Job Status Update Mechanism
 
-Current focus is **hotfix jobs**, not the dashboard.
-
 We should choose one status update mechanism for hotfix jobs before implementation and stick with it. Switching later can take time because it affects backend job APIs, frontend consumption, testing, and deployment behavior.
 
 The backend remains the source of truth for every hotfix job. The UI is only one consumer of that job status.
