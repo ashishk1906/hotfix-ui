@@ -1,0 +1,23 @@
+{
+  "schema_version": "1",
+  "artifact_type": "package_contents",
+  "task_id": "TAT-101",
+  "package_name": "TAT-101-v1.0.0-tata-hf1",
+  "package_version": "v1.0.0-tata-hf1",
+  "base_release": "release/1.0.0",
+  "target_release": "chf/TAT-101-dns-resolution-fix",
+  "customer_scope": "Tata",
+  "destination_layout": "repository-root-overlay",
+  "included_files": [
+    {
+      "source": "files/app.py",
+      "destination": "app.py"
+    }
+  ],
+  "rollback_files": [
+    {
+      "source": "rollback/app.py",
+      "destination": "app.py"
+    }
+  ]
+}
