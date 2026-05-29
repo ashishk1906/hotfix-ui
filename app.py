@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import json
+import socket
 from pathlib import Path
 
 app = FastAPI(title="Hotfix Dashboard API")
@@ -18,6 +19,15 @@ app.add_middleware(
 DATA_FILE = Path(__file__).with_name("mock-data.json")
 with DATA_FILE.open("r", encoding="utf-8") as f:
     data = json.load(f)
+
+
+def dns_resolution_status(hostname: str = "localhost"):
+    try:
+        socket.getaddrinfo(hostname, None)
+        return {"hostname": hostname, "resolvable": True}
+    except socket.gaierror as exc:
+        return {"hostname": hostname, "resolvable": False, "error": str(exc)}
+
 
 @app.get("/")
 def root():
@@ -52,6 +62,11 @@ def logs():
     return {
         "logs": data["logs"]
     }
+
+
+@app.get("/diagnostics/dns")
+def diagnostics_dns(hostname: str = "localhost"):
+    return dns_resolution_status(hostname)
 
 # Create Hotfix API
 @app.post("/hotfix/create")
