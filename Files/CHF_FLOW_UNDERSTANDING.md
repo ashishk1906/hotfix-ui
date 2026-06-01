@@ -1,354 +1,213 @@
 # Understanding Of CHF Flow
 
-## Scenario
-
-We have one repository with three branch lanes:
+Suppose we receive a severe ticket:
 
 ```txt
-upstream/main
-release
-tenant
+PAY-001: Fix payment retry failure for Tenant A
 ```
 
-### upstream/main
+Tenant A is currently running an older release, while development has continued on `main`. We should not move all the latest changes into the tenant lane. We only need the required fix and any other approved tenant patches that must ship with it.
 
-This contains the latest code. New features, bug fixes, and regular development changes continue to move here.
-
-### release
-
-This contains tagged product releases such as:
+The repository has three branch lanes:
 
 ```txt
-v1.0.0
-v1.1.0
-v1.2.0
+upstream/main     latest development code
+release           tested product releases and tags
+tenant            code actually running for tenants
 ```
 
-A release branch or tag represents a tested product version.
+Different tenants may be running different versions. A tenant may also have more than one active version or existing patches.
 
-### tenant
+These are the steps to follow for the CHF process.
 
-This represents the actual version running for a tenant.
+## 1. Identify The Tenant's Exact Running State
 
-Different tenants may be running different versions. For example:
-
-```txt
-Tenant A -> v1.0.0
-Tenant B -> v1.1.0
-Tenant C -> v1.0.0 with an earlier patch
-```
-
-A tenant may also need its own patch because it cannot immediately upgrade to the latest release.
-
-## Problem
-
-Assume `v1.0.0` was released some time ago.
-
-After that release, development continued on `main`. There may now be many commits:
-
-```txt
-feature changes
-bug fixes
-other tenant fixes
-```
-
-Now, a tenant running `v1.0.0` reports an urgent issue.
-
-We should not move all the latest `main` changes into that tenant branch. We only want the minimum required fix for that issue.
-
-That is the purpose of the CHF flow.
-
-## Expected Input
-
-Before creating a hotfix, we need:
-
-```txt
-Tenant
-Tenant's currently running version
-Issue / ticket
-Affected service or module
-Target tenant branch
-Relevant fix commit, PR, or patch
-```
-
-Example:
-
-```txt
-Tenant: Tenant A
-Running version: v1.0.0
-Issue: Payment retry failure
-Target branch: tenant/tenant-a/v1.0.0
-Fix commit: abc123
-```
-
-## Hotfix Creation Steps
-
-### 1. Identify The Tenant Baseline
-
-First, determine exactly what is running for the tenant.
-
-Check:
-
-```txt
-tenant name
-deployed version
-release tag
-existing tenant patches
-current tenant branch
-```
-
-Example:
-
-```txt
-Tenant A is running v1.0.0
-Tenant A already has patch-01
-Current branch is tenant/tenant-a/v1.0.0-patch-01
-```
-
-This matters because the new hotfix must be created from the tenant's actual running code, not blindly from `main`.
-
-### 2. Understand The Issue
-
-Link the issue or ticket and identify the required fix.
-
-Check:
-
-```txt
-what is broken
-which module is affected
-whether the issue exists in the tenant version
-whether the fix already exists on main
-whether there is an existing PR or commit
-```
-
-At this point, we should know the smallest code change required.
-
-### 3. Find The Relevant Fix
-
-If the fix already exists on `main`, identify the commit or commits.
-
-Example:
-
-```txt
-abc123 - Fix payment retry handling
-def456 - Add missing validation test
-```
-
-Do not include unrelated commits.
-
-If the fix does not exist yet, create and review the fix first.
-
-### 4. Check Dependencies
-
-Before applying the fix, check whether it depends on other commits.
+- Find the active branches for the tenant.
+- Confirm which versions, tags, or commits are actually deployed.
+- Check whether the tenant already has earlier patches.
 
 For example:
 
 ```txt
-Does abc123 depend on a helper added in another commit?
-Does it require a schema change?
-Does it require a configuration change?
-Does it depend on a newer library version?
+tenant/tenant-a-v1.0.0
+tenant/tenant-a-v1.0.0-patch-01
 ```
 
-If a dependency is required, include only the minimum supporting commits.
+If multiple versions are active, each one may need to be handled separately.
 
-If the fix cannot be safely isolated, stop and ask for review instead of pulling a large set of changes from `main`.
+## 2. Create A Dedicated CHF Branch
 
-### 5. Create A Hotfix Branch
+Create the CHF branch from the tenant's actual deployed state.
 
-Create a new hotfix branch from the tenant's current running branch.
+For example:
 
-Example:
+```bash
+git checkout -b chf/tenant-a-payment-retry tenant/tenant-a-v1.0.0-patch-01
+```
+
+The branch should not be created from the latest `main` by default. Tenant A may be running an older version with its own patches.
+
+Use a clear branch name tied to the tenant and the fix.
+
+## 3. Identify Or Create The Required Fix
+
+Check whether the issue has already been fixed somewhere, usually on `main` or in an existing PR.
+
+If a reviewed fix already exists, identify the relevant commit:
 
 ```txt
-tenant/tenant-a/v1.0.0-patch-01
-        |
-        +-- hotfix/tenant-a/payment-retry
+abc123 - Fix payment retry handling
 ```
 
-The new branch should start from the exact tenant baseline.
+If no fix exists yet:
 
-### 6. Apply The Fix
+- make the smallest required code change
+- review it
+- test it
+- create a focused commit
 
-Apply the selected commits to the hotfix branch.
+For example:
 
-Usually this means cherry-picking the required commits.
+```bash
+git commit -m "fix(tenant-a): correct payment retry handling"
+```
 
-Example:
+Do not include unrelated features, refactoring, or other changes.
+
+## 4. Add Other Approved Tenant Fixes If Required
+
+CHF means **Cumulative HotFix**.
+
+If Tenant A has other approved pending patches that should ship together, cherry-pick them into the same CHF branch.
+
+For example:
+
+```bash
+git cherry-pick abc123
+git cherry-pick def456
+```
+
+Skip unrelated new features and changes.
+
+## 5. Test The CHF Branch
+
+- Run unit and integration tests.
+- Run tenant-specific checks if they exist.
+- Compare the CHF branch against the tenant baseline.
+- Confirm that only intended changes are included.
+- Deploy to a staging environment matching the tenant setup.
+- Verify that the issue is fixed without breaking existing behavior.
+
+## 6. Merge And Tag
+
+After validation:
+
+- merge the CHF branch back into the tenant branch
+- create a clear tag for the tenant patch
+
+For example:
 
 ```txt
-cherry-pick abc123
-cherry-pick def456
+v1.0.0-tenant-a-chf1
 ```
 
-If a conflict occurs:
+This tag should include the tenant's previous patches plus the new CHF changes.
+
+## 7. Build And Deploy
+
+- Build the deployable artifact from the verified tag.
+- Prepare rollback steps before production deployment.
+- Deploy to the tenant environment.
+- Run health checks and smoke tests.
+- Roll back if the deployment causes an issue.
+
+If the tenant has a large deployment footprint, deploy in stages so that problems can be caught early.
+
+## 8. Repeat For Other Active Tenant Versions
+
+If Tenant A has more than one active version, repeat the branch, test, tag, and deploy steps for each affected version.
+
+## 9. Carry The Fix Forward Where Required
+
+After the tenant CHF is completed, check whether the same issue exists in `main`, the active release branch, or other tenant lanes.
+
+- If the issue also exists upstream, apply the fix there so that it does not return in future releases.
+- If the issue is tenant-specific, keep it only in the tenant lane.
+- Record the deployed tags and commits.
+
+## CHF Flow Summary
 
 ```txt
-stop the workflow
-report the conflicting files
-ask for user/developer input
-resolve the conflict
-continue after confirmation
+Identify tenant's deployed state
+        |
+Create CHF branch from tenant baseline
+        |
+Identify or create the required fix
+        |
+Add other approved tenant fixes if required
+        |
+Test in tenant-like environment
+        |
+Merge into tenant branch and tag
+        |
+Build and deploy
+        |
+Repeat for other active versions
+        |
+Carry fix forward where required
 ```
 
-The workflow should not silently resolve risky conflicts.
+## HotFix Instead Of CHF
 
-### 7. Validate The Hotfix
+Sometimes we want to ship only one specific fix and nothing else.
 
-Run validation against the tenant hotfix branch.
+That is a HotFix rather than a cumulative hotfix.
 
-Minimum checks:
+Suppose commit `a1b2c3d` contains the required payment retry fix, but it also contains unrelated changes. We should extract only the required part.
 
-```txt
-build passes
-unit tests pass
-affected feature is verified
-tenant-specific checks pass
-no unrelated changes are included
+### 1. Apply The Commit Without Committing
+
+```bash
+git cherry-pick -n a1b2c3d
 ```
 
-Also compare the diff against the tenant baseline.
+`-n` applies the changes to the working tree without creating a commit.
 
-The diff should contain only the intended fix and its required dependencies.
+### 2. Select Only The Required Changes
 
-### 8. Review Risk
-
-Before deployment, review the risk.
-
-Consider:
-
-```txt
-number of changed files
-criticality of affected module
-database changes
-configuration changes
-dependency updates
-test results
-tenant impact
-rollback possibility
+```bash
+git restore --staged .
+git add -p
 ```
 
-If the risk is high, require approval before deployment.
+Use `git add -p` to review and stage only the required hunks.
 
-### 9. Deploy To Tenant Environment
+If the required file is already known:
 
-Deploy the hotfix branch to the tenant environment.
-
-Track:
-
-```txt
-deployment start
-deployment result
-health checks
-smoke tests
-rollback status if deployment fails
+```bash
+git add -p path/to/file
 ```
 
-If deployment succeeds, mark the hotfix as completed.
+### 3. Verify The Selected Changes
 
-If deployment fails, stop and either fix the issue or roll back.
-
-### 10. Record The Result
-
-Store the final details:
-
-```txt
-tenant
-original tenant version
-hotfix branch
-issue / ticket
-applied commits
-validation result
-deployment result
-owner
-approver
-created time
-updated time
-final status
+```bash
+git diff --staged
+git diff
 ```
 
-This gives us an audit trail.
+- `git diff --staged` should show only the changes we want to commit.
+- `git diff` shows the unwanted changes that are still unstaged.
 
-### 11. Merge The Fix Back Where Required
+### 4. Remove Unwanted Changes
 
-After the tenant hotfix is completed, check whether the fix also needs to move into other branch lanes.
-
-Possible actions:
-
-```txt
-Ensure fix exists on main
-Include fix in the next release
-Apply fix to other affected tenant branches if needed
+```bash
+git restore .
 ```
 
-This prevents the same issue from returning in future releases.
+### 5. Commit The Focused Fix
 
-## Simple Flow Summary
-
-```txt
-Identify tenant's running version
-        |
-Understand issue
-        |
-Find minimum fix commits
-        |
-Check dependencies
-        |
-Create branch from tenant baseline
-        |
-Apply commits
-        |
-Resolve conflicts if required
-        |
-Build and test
-        |
-Review risk
-        |
-Deploy to tenant
-        |
-Record result
-        |
-Merge fix forward where needed
+```bash
+git commit -m "fix(tenant-a): correct payment retry handling"
 ```
 
-## Example
-
-```txt
-Tenant A is running v1.0.0-patch-01.
-
-A payment retry issue is reported.
-
-The fix already exists on main as commit abc123.
-
-We verify that abc123 has no additional dependencies.
-
-We create:
-hotfix/tenant-a/payment-retry
-
-from:
-tenant/tenant-a/v1.0.0-patch-01
-
-We cherry-pick abc123.
-
-Build and tests pass.
-
-We deploy the hotfix to Tenant A.
-
-We verify the payment retry flow.
-
-We record the hotfix as completed.
-
-Finally, we confirm that abc123 is already present on main and include it in the next release branch if required.
-```
-
-## Point To Confirm
-
-One detail should be confirmed before implementation:
-
-```txt
-Should a tenant hotfix always branch from the tenant's currently deployed branch,
-or should it branch from the corresponding release tag and then reapply existing tenant patches?
-```
-
-My understanding is that branching from the tenant's actual deployed state is safer because it already includes any tenant-specific patches.
+After this, continue with testing, tagging, building, and deployment.
