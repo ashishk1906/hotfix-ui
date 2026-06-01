@@ -312,25 +312,6 @@ Record result
 Merge fix forward where needed
 ```
 
-## Important Rules
-
-```txt
-Do not create the hotfix from the latest main branch by default.
-Start from the tenant's actual running version.
-
-Do not include unrelated commits.
-Use the smallest safe set of changes.
-
-Do not silently resolve conflicts.
-Ask for input when the workflow is blocked.
-
-Do not treat ticket status and hotfix job status as the same thing.
-
-Always record which tenant, version, branch, issue, and commits were involved.
-
-After deployment, make sure the fix is carried forward into future releases where required.
-```
-
 ## Example
 
 ```txt
