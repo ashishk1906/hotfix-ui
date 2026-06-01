@@ -6,7 +6,7 @@ Suppose we receive a severe ticket:
 PAY-001: Fix payment retry failure for Tenant A
 ```
 
-Tenant A is currently running an older release, while development has continued on `main`. We should not move all the latest changes into the tenant lane. We only need the required fix and any other approved tenant patches that must ship with it.
+Tenant A is currently running an older release. The CHF should be created from Tenant A's actual deployed state. We only need the required fix and any other approved tenant patches that must ship with it.
 
 The repository has three branch lanes:
 
@@ -49,21 +49,18 @@ The branch should not be created from the latest `main` by default. Tenant A may
 
 Use a clear branch name tied to the tenant and the fix.
 
-## 3. Identify Or Create The Required Fix
+## 3. Locate And Fix The Issue
 
-Check whether the issue has already been fixed somewhere, usually on `main` or in an existing PR.
+Locate the root cause on the tenant-specific CHF branch and make the smallest required change.
 
-If a reviewed fix already exists, identify the relevant commit:
+For example:
 
 ```txt
-abc123 - Fix payment retry handling
+The payment retry failure is caused by incorrect retry handling in payment_service.py.
 ```
 
-If no fix exists yet:
-
-- make the smallest required code change
-- review it
-- test it
+- update only the affected code
+- avoid unrelated features or refactoring
 - create a focused commit
 
 For example:
@@ -72,7 +69,7 @@ For example:
 git commit -m "fix(tenant-a): correct payment retry handling"
 ```
 
-Do not include unrelated features, refactoring, or other changes.
+The fix should be made and verified against the tenant's deployed code state.
 
 ## 4. Add Other Approved Tenant Fixes If Required
 
@@ -83,8 +80,8 @@ If Tenant A has other approved pending patches that should ship together, cherry
 For example:
 
 ```bash
-git cherry-pick abc123
 git cherry-pick def456
+git cherry-pick ghi789
 ```
 
 Skip unrelated new features and changes.
@@ -131,7 +128,7 @@ If Tenant A has more than one active version, repeat the branch, test, tag, and 
 
 After the tenant CHF is completed, check whether the same issue exists in `main`, the active release branch, or other tenant lanes.
 
-- If the issue also exists upstream, apply the fix there so that it does not return in future releases.
+- If the issue also exists upstream, carry the tenant fix forward through a cherry-pick or PR so that it does not return in future releases.
 - If the issue is tenant-specific, keep it only in the tenant lane.
 - Record the deployed tags and commits.
 
@@ -142,7 +139,7 @@ Identify tenant's deployed state
         |
 Create CHF branch from tenant baseline
         |
-Identify or create the required fix
+Locate and fix the issue on CHF branch
         |
 Add other approved tenant fixes if required
         |
@@ -211,3 +208,4 @@ git commit -m "fix(tenant-a): correct payment retry handling"
 ```
 
 After this, continue with testing, tagging, building, and deployment.
+
