@@ -35,7 +35,31 @@ tenant/tenant-a-v1.0.0-patch-01
 
 If multiple versions are active, each one may need to be handled separately.
 
-## 2. Create A Dedicated CHF Branch
+## 2. Identify The Fixes To Include
+
+Identify the approved fixes that should be included in the CHF.
+
+These fixes may already exist in `upstream/main`, a release branch, or another approved branch.
+
+For each fix:
+
+```txt
+identify the commit hash
+confirm that it is approved
+confirm that it is relevant for the tenant version
+skip unrelated features and changes
+```
+
+For example:
+
+```txt
+abc123 - Fix payment retry handling
+def456 - Add approved validation correction
+```
+
+If a required fix does not exist yet, create and review it first. Creating a new fix directly on the tenant CHF branch should be treated as an exception.
+
+## 3. Create A Dedicated CHF Branch
 
 Create the CHF branch from the tenant's actual deployed state.
 
@@ -49,42 +73,20 @@ The branch should not be created from the latest `main` by default. Tenant A may
 
 Use a clear branch name tied to the tenant and the fix.
 
-## 3. Locate And Fix The Issue
+## 4. Apply The Selected Fixes
 
-Locate the root cause on the tenant-specific CHF branch and make the smallest required change.
-
-For example:
-
-```txt
-The payment retry failure is caused by incorrect retry handling in payment_service.py.
-```
-
-- update only the affected code
-- avoid unrelated features or refactoring
-- create a focused commit
+Cherry-pick the approved commits into the CHF branch.
 
 For example:
 
 ```bash
-git commit -m "fix(tenant-a): correct payment retry handling"
-```
-
-The fix should be made and verified against the tenant's deployed code state.
-
-## 4. Add Other Approved Tenant Fixes If Required
-
-CHF means **Cumulative HotFix**.
-
-If Tenant A has other approved pending patches that should ship together, cherry-pick them into the same CHF branch.
-
-For example:
-
-```bash
+git cherry-pick abc123
 git cherry-pick def456
-git cherry-pick ghi789
 ```
 
-Skip unrelated new features and changes.
+CHF means **Cumulative HotFix**, so the branch can include the required fix and other approved tenant patches that should ship together.
+
+Do not include unrelated new features or changes.
 
 ## 5. Test The CHF Branch
 
@@ -137,11 +139,11 @@ After the tenant CHF is completed, check whether the same issue exists in `main`
 ```txt
 Identify tenant's deployed state
         |
+Identify approved fixes to include
+        |
 Create CHF branch from tenant baseline
         |
-Locate and fix the issue on CHF branch
-        |
-Add other approved tenant fixes if required
+Apply selected fixes
         |
 Test in tenant-like environment
         |
@@ -208,4 +210,3 @@ git commit -m "fix(tenant-a): correct payment retry handling"
 ```
 
 After this, continue with testing, tagging, building, and deployment.
-
