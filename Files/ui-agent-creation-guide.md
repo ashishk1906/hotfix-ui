@@ -2,23 +2,15 @@
 
 ## Purpose
 
-This guide is for creating the UI agent for Hotfix / CHF Jobs.
+This guide is for creating a simple UI agent for Hotfix / CHF Jobs.
 
-The UI should focus only on **Jobs**.
+The first version should focus only on managing jobs.
 
-The main purpose of the UI is to help the release engineer manage hotfix jobs from creation to closure.
+The UI should help a release engineer create a hotfix job, track its current state, handle blockers, and close it.
 
-## Source Of Truth
+## Main Idea
 
-The UI agent must use the Hotfix Jobs file as the source of truth for fields and columns.
-
-If the Hotfix Jobs file has a column, the UI should respect it.
-
-If a field is not part of the Hotfix Jobs flow, do not add it unless it is required for job execution.
-
-The UI should be built around the job record, not around a generic dashboard.
-
-## What A Job Represents
+The main object in the UI is a **Job**.
 
 A Job represents one HotFix or CHF request.
 
@@ -27,46 +19,43 @@ Example:
 ```txt
 Ticket: TAT-101
 Customer: Tata
-Description: dns-resolution-fix
+Issue: dns-resolution-fix
 Type: CHF
 Baseline: release/tata/1.0
 Source branch: hotfix/dhcp-scope-exhaustion
-Status: Closed
+Status: Running
 ```
 
-The Job should show:
+The UI should answer these basic questions:
 
 ```txt
-what issue is being fixed
-which tenant or release is affected
-which baseline is used
-which fixes are included
-what stage the job is in
-whether the job is blocked
-which artifacts were generated
-whether the job was merged, tagged, pushed, deployed, and closed
+What is the issue?
+Who is affected?
+Which version or branch is affected?
+Is this a HotFix or CHF?
+What stage is it in?
+Is it blocked?
+Who owns it?
 ```
 
-## Main Screens
+## Screens Needed
 
-The first version should have only these screens:
+For the first version, only these screens are needed:
 
 ```txt
 Jobs List
 Create Job
 Job Details
-Decision / Blocker View
+Blocker / Decision View
 ```
 
-Do not create a separate dashboard for the first version.
-
-Do not create a separate Artifact View in the first version. Artifacts should be shown inside the Job Details page.
+No separate dashboard is needed.
 
 ## Jobs List
 
-The Jobs List is the main screen.
+The Jobs List should be the main screen.
 
-It should show the job columns from the Hotfix Jobs file.
+It should show the important job columns from the Hotfix Jobs file.
 
 Recommended columns:
 
@@ -75,32 +64,13 @@ Job ID
 Ticket ID
 Customer / Tenant
 Issue summary
-Severity
 Job type
+Severity
 Status
 Current stage
-Affected baseline
-Source branch
-CHF branch
-Release / tenant branch
-Tag
-Package status
 Owner
-Created at
 Updated at
 Blocker reason
-```
-
-The table should be simple and operational.
-
-The user should quickly understand:
-
-```txt
-which jobs are running
-which jobs are blocked
-which jobs are waiting for approval
-which jobs are completed
-which jobs are closed
 ```
 
 Useful filters:
@@ -108,17 +78,16 @@ Useful filters:
 ```txt
 Customer / Tenant
 Status
-Current stage
 Job type
 Severity
 Owner
-Created date
-Updated date
 ```
+
+The list should be simple and easy to scan.
 
 ## Create Job
 
-The Create Job form should collect only the fields required to start the hotfix workflow.
+The Create Job form should collect only what is needed to start the job.
 
 Required fields:
 
@@ -130,7 +99,7 @@ Description
 Severity
 Job type
 Affected baseline
-Source branch or source commits
+Source branch or commit
 Owner
 ```
 
@@ -139,29 +108,25 @@ Optional fields:
 ```txt
 Jira link
 Customer report link
-Steps to reproduce
-Environment
 Notes
-Deployment notes
-Rollback notes
 ```
 
-The UI should not allow job creation if required fields are missing.
+The UI should not allow the job to be created if required fields are missing.
 
 ## Job Type
 
-The UI should support two job types:
+The UI should support:
 
 ```txt
 HotFix
 CHF
 ```
 
-Use **HotFix** when only one specific fix needs to be shipped.
+Use **HotFix** when one specific fix is needed.
 
-Use **CHF** when multiple approved fixes need to be shipped together for the same tenant or release version.
+Use **CHF** when multiple approved fixes need to be combined for the same tenant or release.
 
-The UI should not automatically include every available fix. The selected fixes must be explicit.
+The UI should not automatically include fixes. The user should clearly select or provide the source branch/commit.
 
 ## Job Status
 
@@ -176,7 +141,7 @@ Closed
 Failed
 ```
 
-If the job is blocked, show the exact reason.
+If a job is blocked, show the reason clearly.
 
 Examples:
 
@@ -184,45 +149,38 @@ Examples:
 Source branch not found
 Baseline not confirmed
 Cherry-pick conflict
-Unexpected files in diff
 Test failed
-Packaging failed
-Evaluator approval required
 Push approval required
 ```
 
 ## Job Stages
 
-The job should move through clear stages:
+Use simple stages:
 
 ```txt
 Created
-Baseline Identified
-Fixes Selected
+Baseline Selected
+Fix Selected
 Branch Created
-Fixes Applied
+Fix Applied
 Testing
-Diff Review
-Packaging
 Merge And Tag
 Push
 Deployment
-Carry Forward
 Closed
 ```
 
-Only one current stage should be active at a time.
+For CHF jobs, `Fix Selected` can mean one or more approved fixes.
 
-The UI should show actions based on the current stage only.
+Only show actions that make sense for the current stage.
 
-## Job Details Page
+## Job Details
 
-The Job Details page is the most important page.
+The Job Details page should show the full state of one job.
 
-It should show:
+Show:
 
 ```txt
-Job summary
 Ticket ID
 Customer / Tenant
 Issue summary
@@ -233,142 +191,69 @@ Owner
 Status
 Current stage
 Affected baseline
-Source branch
-Source commits
-CHF branch
-Release / tenant branch
+Source branch or commit
+Hotfix / CHF branch
+Target branch
 Tag
-Package artifact
-Test result
-Diff result
 Blocker reason
+Last updated
 Timeline
-Artifacts
 ```
 
-The user should understand the job state without reading raw logs first.
+This page should be readable without opening logs.
 
-## Baseline Section
+## Baseline
 
-The baseline must be shown clearly.
+The baseline should be clear because hotfix work should start from the affected tenant or release version.
 
 Example:
 
 ```txt
-Baseline branch: release/tata/1.0
-Baseline commit: bc58516
+Affected baseline: release/tata/1.0
 ```
 
-This is important because CHF should start from the affected tenant or release baseline.
+Do not assume latest `main` is the baseline.
 
-It should not start from latest `main` by default.
+If the baseline is missing, the job should be blocked.
 
-If the baseline is missing or unclear, the job should become blocked.
+## Timeline
 
-## Fixes Section
+Each job should have a simple timeline.
 
-For CHF jobs, show the selected fixes.
-
-Each selected fix should show:
+Example:
 
 ```txt
-Commit hash
-Source branch
-Linked ticket
-Short description
-Approval status
-Included / excluded
-Reason
+Job created
+Baseline selected
+Branch created
+Fix applied
+Testing completed
+Merged and tagged
+Pushed
+Deployed
+Closed
 ```
 
-If a commit has unrelated changes, the UI should show that review is required.
+The timeline should show what happened and when.
 
-## Diff Review
+## Blockers And Decisions
 
-The UI should show the effective diff between the baseline and the hotfix branch.
-
-Show:
+If a job is blocked, the UI should show:
 
 ```txt
-Changed files
-Added files
-Removed files
-Generated files
-Excluded files
-Risk notes
+What is blocked
+Why it is blocked
+What options are available
 ```
-
-If the diff contains unexpected files, the job should be blocked until reviewed.
-
-## Testing
-
-The UI should show test information clearly.
-
-Show:
-
-```txt
-Test command
-Exit code
-Result
-Last output lines
-Smoke test result
-Known limitation
-```
-
-If tests fail, the UI should show whether the failure is:
-
-```txt
-new
-pre-existing
-unclear
-```
-
-Do not hide failed tests.
-
-## Packaging
-
-The Packaging section should show what will be deployed.
-
-Show:
-
-```txt
-Package name
-Package version
-Included files
-Rollback files
-Install script
-Rollback script
-Manifest
-Checksum file
-Archive file
-Validation result
-```
-
-The package should include only:
-
-```txt
-approved changed files
-rollback files
-install script
-rollback script
-manifest
-checksums
-```
-
-Do not package unrelated files.
-
-## Decisions And Blockers
-
-If the job needs a human decision, show the problem and clear options.
 
 Example:
 
 ```txt
 Problem: Source branch not found.
 
-A. Stop and wait for the correct source branch
+A. Wait for the correct source branch
 B. Use another approved source branch
-C. Create a simulated branch for demo only
+C. Stop this job
 ```
 
 Avoid vague messages like:
@@ -377,156 +262,54 @@ Avoid vague messages like:
 Something went wrong
 ```
 
-The UI should always show the reason.
-
-## Timeline
-
-Each job should have a readable timeline.
-
-Example:
-
-```txt
-Job created
-Baseline selected
-Source commit inspected
-CHF branch created
-Fix cherry-picked
-Tests executed
-Diff reviewed
-Package generated
-Release branch merged
-Tag created
-Branch pushed
-Deployment completed
-Fix carried forward
-Job closed
-```
-
-The timeline should be understandable for engineering, QA, and management.
-
-## Artifacts
-
-The job should show generated artifacts inside the Job Details page.
-
-A separate Artifact View is not needed for the first version.
-
-Examples:
-
-```txt
-Diff manifest
-Packaging manifest
-Evaluator report
-Install script
-Rollback script
-Checksum file
-Package zip
-Hotfix history entry
-```
-
-Each artifact should show:
-
-```txt
-Name
-Type
-Path
-Created time
-Status
-```
-
-## Valid Actions
-
-Actions should depend on the current job stage.
+## Actions
 
 Possible actions:
 
 ```txt
 Create job
 Select baseline
-Add fix commit
-Create hotfix branch
-Run tests
-Run diff review
-Generate package
-Mark evaluator passed
-Create tag
-Push branch and tag
+Add source branch or commit
+Create branch
+Mark fix applied
+Mark testing completed
+Mark merged and tagged
+Mark pushed
 Mark deployed
-Carry forward to main
 Close job
 ```
 
-Do not show actions that are not valid for the current stage.
+Actions should be shown based on the current job stage.
 
 ## What To Avoid
 
-Avoid:
+Do not include these in the first version:
 
 ```txt
-Dashboard-first design
-Large charts
-Analytics widgets
-Marketing-style screens
+Dashboard
+Charts
+Analytics
+Artifact viewer
+Packaging screen
+Large reports
 Decorative cards
-Generic admin pages
-Unrelated settings pages
-Unnecessary explanations
-Fake metrics
+Extra admin pages
 ```
 
-The UI should be practical and job-focused.
-
-## Simple Job Shape
-
-Use the actual Hotfix Jobs columns as the final source of truth.
-
-This is only an example structure:
-
-```json
-{
-  "job_id": "JOB-001",
-  "ticket_id": "TAT-101",
-  "customer": "Tata",
-  "issue_summary": "dns-resolution-fix",
-  "severity": "High",
-  "job_type": "CHF",
-  "status": "Closed",
-  "current_stage": "Closed",
-  "affected_baseline": "release/tata/1.0",
-  "source_branch": "hotfix/dhcp-scope-exhaustion",
-  "source_commits": ["125e8cf"],
-  "chf_branch": "chf/TAT-101-dns-resolution-fix",
-  "release_branch": "release/tata/1.0",
-  "tag": "v1.0.0-tata-hf1",
-  "package_artifact": "bitloka-hotfix-demo-TAT-101.zip",
-  "owner": "release-engineer",
-  "blocker_reason": null,
-  "artifacts": [],
-  "timeline": []
-}
-```
+Keep the UI practical and job-focused.
 
 ## Final Direction
 
-The UI agent should build a Jobs-first interface.
+The first version should be a simple Jobs UI.
 
-The flow should be:
+Flow:
 
 ```txt
 Create Job
-Select Baseline
-Select Fixes
-Create Branch
-Apply Fixes
-Test
-Review Diff
-Package
-Merge And Tag
-Push
-Deploy
-Carry Forward If Needed
+Track Job
+Handle Blockers
+Update Stage
 Close Job
 ```
 
-The UI should help the release engineer manage hotfix jobs safely and clearly.
-
-No dashboard noise is needed.
+The UI should be clean, simple, and useful for release engineers managing HotFix and CHF jobs.
